@@ -5,18 +5,21 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Radio, Sparkles, FolderOpen, Gift, LogOut, Music2
+  Radio, Sparkles, FolderOpen, Gift, LogOut, Music2, BarChart3
 } from "lucide-react";
 import NowPlayingTab from "@/components/dashboard/NowPlayingTab";
 import DiscoverTab from "@/components/dashboard/DiscoverTab";
 import HistoryTab from "@/components/dashboard/HistoryTab";
 import WrappedTab from "@/components/dashboard/WrappedTab";
 
-type Tab = "now" | "discover" | "history" | "wrapped";
+import AnalyticsTab from "@/components/dashboard/AnalyticsTab";
+
+type Tab = "now" | "discover" | "analytics" | "history" | "wrapped";
 
 const TABS: { id: Tab; label: string; sublabel: string; icon: React.ReactNode }[] = [
   { id: "now", label: "Agora", sublabel: "Tocando & Recentes", icon: <Radio className="w-4 h-4" /> },
   { id: "discover", label: "Descobrir", sublabel: "Nova Playlist", icon: <Sparkles className="w-4 h-4" /> },
+  { id: "analytics", label: "Analytics", sublabel: "Gráficos & Insights", icon: <BarChart3 className="w-4 h-4" /> },
   { id: "history", label: "Histórico", sublabel: "Importar JSON", icon: <FolderOpen className="w-4 h-4" /> },
   { id: "wrapped", label: "Wrapped", sublabel: "Seu ano em música", icon: <Gift className="w-4 h-4" /> },
 ];
@@ -24,6 +27,7 @@ const TABS: { id: Tab; label: string; sublabel: string; icon: React.ReactNode }[
 const TAB_COLORS: Record<Tab, string> = {
   now: "from-purple-600 to-blue-600",
   discover: "from-emerald-600 to-teal-600",
+  analytics: "from-blue-600 to-indigo-600",
   history: "from-amber-600 to-orange-600",
   wrapped: "from-rose-600 to-pink-600",
 };
@@ -101,7 +105,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tab Content */}
-      <main className="relative z-10 px-4 pb-8">
+      <main className="relative z-10 px-4 pb-8 h-[calc(100vh-180px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/10">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -112,6 +116,7 @@ export default function DashboardPage() {
           >
             {activeTab === "now" && <NowPlayingTab />}
             {activeTab === "discover" && <DiscoverTab />}
+            {activeTab === "analytics" && <AnalyticsTab />}
             {activeTab === "history" && <HistoryTab />}
             {activeTab === "wrapped" && <WrappedTab />}
           </motion.div>
