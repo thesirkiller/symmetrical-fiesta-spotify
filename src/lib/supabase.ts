@@ -2,10 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 
 // These are server-only vars (no NEXT_PUBLIC_ prefix)
 // Supabase is only called from API routes / server components
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+// Use server-only vars. During build, if these are missing, we provide placeholders
+// to avoid "supabaseKey is required" errors during static analysis.
+const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "placeholder";
 
-// Public client — safe for client components
+// Public client — safe for client components (but only called on server in our current setup)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Admin client — server-side only (bypasses RLS)
