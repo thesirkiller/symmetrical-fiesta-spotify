@@ -1,88 +1,140 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowRight, Music, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Radio, Sparkles, FolderOpen, Gift, LogOut, Music2
+} from "lucide-react";
+import NowPlayingTab from "@/components/dashboard/NowPlayingTab";
+import DiscoverTab from "@/components/dashboard/DiscoverTab";
+import HistoryTab from "@/components/dashboard/HistoryTab";
+import WrappedTab from "@/components/dashboard/WrappedTab";
 
-export default function Home() {
-  const { status } = useSession();
+type Tab = "now" | "discover" | "history" | "wrapped";
+
+const TABS: { id: Tab; label: string; sublabel: string; icon: React.ReactNode }[] = [
+  { id: "now", label: "Agora", sublabel: "Tocando & Recentes", icon: <Radio className="w-4 h-4" /> },
+  { id: "discover", label: "Descobrir", sublabel: "Nova Playlist", icon: <Sparkles className="w-4 h-4" /> },
+  { id: "history", label: "Histórico", sublabel: "Importar JSON", icon: <FolderOpen className="w-4 h-4" /> },
+  { id: "wrapped", label: "Wrapped", sublabel: "Seu ano em música", icon: <Gift className="w-4 h-4" /> },
+];
+
+const TAB_COLORS: Record<Tab, string> = {
+  now: "from-purple-600 to-blue-600",
+  discover: "from-emerald-600 to-teal-600",
+  history: "from-amber-600 to-orange-600",
+  wrapped: "from-rose-600 to-pink-600",
+};
+
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>("now");
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/login");
+  }, [status, router]);
+
+  if (status === "loading") return <LoadingScreen />;
+  if (!session) return null;
+
+  const currentTab = TABS.find((t) => t.id === activeTab)!;
 
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-mesh px-4">
-      {/* Dynamic Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse delay-1000" />
+    <div className="min-h-screen bg-zinc-950 text-white overflow-hidden">
+      {/* Background glow */}
+      <div className="fixed inset-0 pointer-events-none" aria-hidden>
+        <div className={`absolute top-[-15%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-br ${TAB_COLORS[activeTab]} opacity-10 rounded-full blur-[120px] transition-all duration-700`} />
       </div>
 
-      <div className="relative z-10 max-w-4xl w-full text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex justify-center mb-8"
-        >
-          <div className="relative">
-            <div className="absolute inset-0 bg-purple-500 blur-2xl opacity-40 animate-pulse" />
-            <div className="relative p-6 bg-zinc-900 border border-white/10 rounded-3xl shadow-2xl">
-              <Music className="w-12 h-12 text-purple-400" />
-            </div>
+      {/* Header */}
+      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-white/5 border border-white/10 rounded-xl">
+            <Music2 className="w-5 h-5 text-purple-400" />
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest">Antigravity</p>
+            <p className="text-sm font-bold leading-none">
+              {(session?.user?.name ?? "").split(" ")[0]}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-zinc-400 hover:text-white transition-all"
         >
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6">
-            Seu ano com <br />
-            <span className="bg-gradient-to-r from-purple-400 via-white to-blue-400 bg-clip-text text-transparent italic">
-              Antigravity
-            </span>
-          </h1>
+          <LogOut className="w-3.5 h-3.5" />
+          Sair
+        </button>
+      </header>
 
-          <p className="text-zinc-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed">
-            Mergulhe nas estatísticas da sua jornada musical. Uma experiência visual única moldada pelos seus dados do Spotify.
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
-        >
-          <Link
-            href={status === "authenticated" ? "/wrapped" : "/login"}
-            className="group relative px-8 py-4 bg-white text-black font-bold rounded-2xl flex items-center gap-2 hover:scale-105 transition-transform active:scale-95"
+      {/* Tab Bar */}
+      <nav className="relative z-10 flex gap-1 px-4 pt-4 pb-2 overflow-x-auto scrollbar-none">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${activeTab === tab.id
+              ? `bg-gradient-to-r ${TAB_COLORS[tab.id]} text-white shadow-lg`
+              : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 border border-white/5"
+              }`}
           >
-            <span>{status === "authenticated" ? "Ver meu Wrapped" : "Começar Agora"}</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Link>
-
-          <button className="px-8 py-4 bg-zinc-900/50 backdrop-blur-md border border-white/10 text-white font-medium rounded-2xl flex items-center gap-2 hover:bg-zinc-800 transition-colors">
-            <Sparkles className="w-5 h-5 text-purple-400" />
-            <span>Ver Ranking Global</span>
+            {tab.icon}
+            <span>{tab.label}</span>
           </button>
-        </motion.div>
+        ))}
+      </nav>
+
+      {/* Tab subtitle */}
+      <div className="relative z-10 px-6 pb-4">
+        <motion.p
+          key={activeTab}
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-zinc-500 uppercase tracking-widest"
+        >
+          {currentTab.sublabel}
+        </motion.p>
       </div>
 
-      {/* Stats/Preview placeholder */}
+      {/* Tab Content */}
+      <main className="relative z-10 px-4 pb-8">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            {activeTab === "now" && <NowPlayingTab />}
+            {activeTab === "discover" && <DiscoverTab />}
+            {activeTab === "history" && <HistoryTab />}
+            {activeTab === "wrapped" && <WrappedTab />}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
       <motion.div
+        className="flex flex-col items-center gap-4"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.4 }}
-        transition={{ delay: 0.8 }}
-        className="absolute bottom-10 left-0 w-full flex justify-around text-[10px] tracking-[0.4em] uppercase font-bold text-zinc-500 whitespace-nowrap overflow-hidden pointer-events-none"
+        animate={{ opacity: 1 }}
       >
-        <span>Data Driven Stories</span>
-        <span className="hidden md:inline">Visual Experience</span>
-        <span>Antigravity Audio Visual</span>
-        <span className="hidden md:inline">Spotify Wrapped Theme</span>
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 rounded-full border-2 border-purple-500/20 border-t-purple-400 animate-spin" />
+          <Music2 className="absolute inset-0 m-auto w-6 h-6 text-purple-400" />
+        </div>
+        <p className="text-zinc-500 text-xs tracking-[0.3em] uppercase">Carregando...</p>
       </motion.div>
-    </main>
+    </div>
   );
 }
