@@ -48,23 +48,32 @@ export async function GET(req: any) {
             p_limit: 10
         });
 
-        // 6. Overall stats (filtered by year if provided)
-        let query = admin
-            .from("streaming_history")
-            .select("ms_played, ts")
-            .eq("spotify_user_id", userId);
+        // 6. Overall stats (Aggregated in SQL)
+        const { data: summaryData } = await admin.rpc("get_analytics_summary", {
+            p_user_id: userId,
+            p_year: year
+        });
 
+        const stats = summaryData?.[0] || { total_ms: 0, play_count: 0, unique_tracks: 0 };
+        const totalMs = Number(stats.total_ms);
+        const playCount = Number(stats.play_count);
+        const uniqueTracks = Number(stats.unique_tracks);
+
+        // Calculate average per day
+        let daysToDivide = 30; // Default: Recent
         if (year) {
-            // Since we don't have a specific index for YEAR(ts), we filter by date range
-            query = query
-                .gte("ts", `${year}-01-01T00:00:00Z`)
-                .lte("ts", `${year}-12-31T23:59:59Z`);
+            const currentYear = new Date().getFullYear();
+            if (year === currentYear) {
+                // If current year, divide by days passed so far
+                const startOfYear = new Date(year, 0, 1);
+                const diffTime = Math.abs(new Date().getTime() - startOfYear.getTime());
+                daysToDivide = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            } else {
+                daysToDivide = 365; // Previous years
+            }
         }
 
-        const { data: totals } = await query;
-
-        const totalMs = totals?.reduce((acc, curr) => acc + curr.ms_played, 0) || 0;
-        const totalTracks = totals?.length || 0;
+        const averagePerDay = (totalMs / 3600000) / daysToDivide;
 
         return NextResponse.json({
             daily: dailyData || [],
@@ -74,10 +83,9 @@ export async function GET(req: any) {
             availableYears: (availableYears || []).map((y: any) => y.year),
             summary: {
                 totalHours: Math.round(totalMs / 3600000),
-                totalTracks,
-                averagePerDay: year
-                    ? Math.round((totalMs / 3600000) / 365) // Approx for whole year
-                    : Math.round((totalMs / 3600000) / 30)   // Last 30 days
+                playCount: playCount,
+                uniqueTracks: uniqueTracks,
+                averagePerDay: averagePerDay < 1 ? Number(averagePerDay.toFixed(2)) : Math.round(averagePerDay)
             }
         });
     } catch (err) {

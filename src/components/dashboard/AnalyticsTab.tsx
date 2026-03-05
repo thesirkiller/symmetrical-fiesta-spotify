@@ -16,7 +16,8 @@ interface AnalyticsData {
     availableYears: number[];
     summary: {
         totalHours: number;
-        totalTracks: number;
+        playCount: number;
+        uniqueTracks: number;
         averagePerDay: number;
     };
 }
@@ -86,7 +87,7 @@ export default function AnalyticsTab() {
                 />
                 <StatCard
                     label="Tracks Totais"
-                    value={data.summary.totalTracks.toLocaleString()}
+                    value={data.summary.uniqueTracks.toLocaleString()}
                     icon={<Music className="text-blue-400" />}
                     delay={0.1}
                 />
@@ -98,7 +99,7 @@ export default function AnalyticsTab() {
                 />
                 <StatCard
                     label="Scrobbles"
-                    value={data.summary.totalTracks.toLocaleString()}
+                    value={data.summary.playCount.toLocaleString()}
                     icon={<Zap className="text-amber-400" />}
                     delay={0.3}
                 />
