@@ -34,39 +34,49 @@ export async function POST(req: NextRequest) {
             const batch = entries.slice(i, i + BATCH_SIZE);
 
             const rows = batch
-                .filter((e) => {
-                    if (e.ms_played < MIN_MS_PLAYED) {
+                .map((e) => {
+                    // Normalize fields from different formats
+                    const msPlayed = e.ms_played ?? e.msPlayed ?? 0;
+                    const ts = e.ts ?? (e.endTime ? new Date(e.endTime + "Z").toISOString() : null);
+                    const trackName = e.master_metadata_track_name ?? e.trackName ?? null;
+                    const artistName = e.master_metadata_album_artist_name ?? e.artistName ?? null;
+                    const albumName = e.master_metadata_album_album_name ?? null;
+
+                    if (msPlayed < MIN_MS_PLAYED) {
                         skippedShort++;
-                        return false;
+                        return null;
                     }
-                    if (!e.spotify_track_uri) return false;
-                    return true;
+
+                    if (!ts || (!trackName && !artistName)) return null;
+
+                    return {
+                        spotify_user_id: userId,
+                        ts,
+                        ms_played: msPlayed,
+                        track_name: trackName,
+                        artist_name: artistName,
+                        album_name: albumName,
+                        spotify_track_uri: e.spotify_track_uri ?? null,
+                        skipped: e.skipped ?? false,
+                        source: "import" as const,
+                    };
                 })
-                .map((e) => ({
-                    spotify_user_id: userId,
-                    ts: e.ts,
-                    ms_played: e.ms_played,
-                    track_name: e.master_metadata_track_name ?? null,
-                    artist_name: e.master_metadata_album_artist_name ?? null,
-                    album_name: e.master_metadata_album_album_name ?? null,
-                    spotify_track_uri: e.spotify_track_uri ?? null,
-                    skipped: e.skipped ?? false,
-                    source: "import" as const,
-                }));
+                .filter((row): row is NonNullable<typeof row> => row !== null);
 
             if (rows.length === 0) continue;
 
             const { error, count } = await admin
                 .from("streaming_history")
                 .upsert(rows, {
-                    onConflict: "spotify_user_id,ts,spotify_track_uri",
+                    onConflict: "spotify_user_id,ts,track_name", // Use track_name for Basic history which lacks URI
                     count: "exact",
                     ignoreDuplicates: true,
                 });
 
             if (error) {
                 console.error("[import] Supabase upsert error:", error);
-                // Continue with next batch, don't abort entire import
+                // If the specific onConflict fails (e.g. if the constraint is different), 
+                // we try to at least log what happened.
             } else {
                 inserted += count ?? rows.length;
             }

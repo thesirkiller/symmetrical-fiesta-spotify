@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { FolderOpen, Upload, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import type { SpotifyHistoryEntry } from "@/types/spotify";
 
-const SEND_BATCH = 2000; // how many entries per API call
+const SEND_BATCH = 1000; // how many entries per API call
 
 interface ImportResult {
     inserted: number;

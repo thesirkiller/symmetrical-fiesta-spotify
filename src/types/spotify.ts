@@ -79,14 +79,18 @@ export interface SpotifyPlaylist {
 
 // Format of Spotify's extended streaming history export JSON
 export interface SpotifyHistoryEntry {
-    ts: string;                                        // ISO timestamp
-    ms_played: number;                                 // milliseconds played
-    master_metadata_track_name: string | null;
-    master_metadata_album_artist_name: string | null;
-    master_metadata_album_album_name: string | null;
-    spotify_track_uri: string | null;
-    reason_end: string | null;
-    skipped: boolean | null;
+    ts?: string;                                       // ISO timestamp (Extended)
+    endTime?: string;                                  // local timestamp (Basic)
+    ms_played?: number;                                 // milliseconds played (Extended)
+    msPlayed?: number;                                  // milliseconds played (Basic)
+    master_metadata_track_name?: string | null;        // Extended
+    master_metadata_album_artist_name?: string | null; // Extended
+    master_metadata_album_album_name?: string | null;  // Extended
+    trackName?: string | null;                          // Basic
+    artistName?: string | null;                         // Basic
+    spotify_track_uri?: string | null;
+    reason_end?: string | null;
+    skipped?: boolean | null;
 }
 
 export type TimeRange = "short_term" | "medium_term" | "long_term";
